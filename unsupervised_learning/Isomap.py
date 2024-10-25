@@ -99,31 +99,3 @@ class Isomap:
             return u[:,:k] * np.sqrt(s[:k])
     
     """
-
-
-"""@njit(parallel=True)
-def dijkstra_par(data, indptr):
-    n = indptr.shape[0]-1
-    dist = np.zeros((n, n))
-    dist.fill(np.inf)
-    for start_node in prange(n):
-        pq = [(0, start_node)]
-        dist[start_node, start_node] = 0
-        while pq:
-            current_distance, current_node = heapq.heappop(pq)
-            if current_distance > dist[start_node, current_node]:
-                continue
-            # _, cols = graph[current_node].nonzero()
-            # for neighbor in cols:
-            for neighbor, weight in zip(graph[current_node].indices, graph[current_node].data):
-                distance = weight + current_distance
-                if distance < dist[start_node, neighbor]:
-                    dist[start_node, neighbor] = distance
-                    heapq.heappush(pq, (distance, neighbor))
-    for i in range(n):
-        for j in range(i, n):
-            small = min(dist[i, j], dist[j, i])
-            dist[i, j] = small
-            dist[j, i] = small
-    return dist
-"""

@@ -48,12 +48,23 @@ def double_center(kernel):
     return gram
 
 
-@njit
-def kernel_pca(dataset, mode: Literal['polynomial', 'gauss'], d=2, delta=2, sigma=2):
-    kernel = poly_kernel(
-        dataset, delta) if mode == 'polynomial' else gauss_kernel(dataset, sigma)
-    print("kernel done")
-    gram = double_center(kernel)
-    print("gram done")
-    s, u = np.linalg.eigh(gram)
-    return np.sqrt(s[-d:]) * u[:, -d:]
+class KernelPCA():
+    def __init__(self, mode: Literal['polynomial', 'gauss'], d=2, delta=2, sigma=2) -> None:
+        self.mode = mode
+        self.d = d
+        self.delta = delta
+        self.sigma = sigma
+
+    def fit(self, dataset):
+        self.dataset = dataset
+
+    @njit
+    def transform(self):
+        kernel = poly_kernel() if self.mode == 'polynomial' else gauss_kernel()
+        gram = double_center(kernel)
+        self.s, self.u = np.linalg.eigh(gram)
+        return np.sqrt(self.s[-self.d:]) * self.u[:, -self.d:]
+
+    def fit_transform(self, dataset):
+        self.fit(dataset)
+        return self.transform()
