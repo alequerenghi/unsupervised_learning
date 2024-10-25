@@ -3,7 +3,6 @@ import numpy as np
 from typing import Literal
 import heapq
 from scipy.sparse import csr_matrix
-from numba import njit, prange
 
 
 def dijkstra(graph):
