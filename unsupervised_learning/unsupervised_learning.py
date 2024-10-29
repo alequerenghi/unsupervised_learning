@@ -6,28 +6,28 @@ from typing import Literal
 import numpy as np
 
 
-def mixGauss(means, sigmas, n):
+def mixGauss(means, gammas, n):
     """
     Parameters:
     means: matrix/list of float of dimension n_classes x dim_data
         Means of the Gaussian functions
-    sigmas: array/list of float of dimension n_classes
+    gammas: array/list of float of dimension n_classes
         Standard deviation of the Gaussian functinos
     n: int
         Number of points for each class
     """
     means = np.array(means)
-    sigmas = np.array(sigmas)
+    gammas = np.array(gammas)
 
     dim = np.shape(means)[1]
-    num_classes = sigmas.size
+    num_classes = gammas.size
 
     data = np.full(fill_value=np.inf, shape=(n*num_classes, dim))
     labels = np.zeros(n*num_classes)
 
-    for i, _ in enumerate(sigmas):
+    for i, _ in enumerate(gammas):
         data[i*n:(i+1)*n] = np.random.multivariate_normal(means[i],
-                                                          np.eye(dim)*sigmas[i]**2, n)
+                                                          np.eye(dim)*gammas[i]**2, n)
         labels[i*n:(i+1)*n] = i
 
     return data, labels
@@ -66,25 +66,37 @@ def swiss_roll(n):
 
 
 @njit(parallel=True)
-def poly_kernel(dataset, delta):
+def poly_kernel(dataset, degree, gamma):
     n = dataset.shape[0]
     kernel = np.zeros((n, n))
     for i in prange(n):
         for j in range(i, n):
-            kernel[i, j] = (dataset[i] @ dataset[j] + 1) ** delta
+            kernel[i, j] = (dataset[i] @ dataset[j] + gamma) ** degree
             if i-j:
                 kernel[j, i] = kernel[i, j]
     return kernel
 
 
 @njit(parallel=True)
-def gauss_kernel(dataset, sigma):
+def linear_kernel(dataset):
     n = dataset.shape[0]
     kernel = np.zeros((n, n))
     for i in prange(n):
         for j in range(i, n):
-            kernel[i, j] = np.exp(
-                dataset[i]**2 @ dataset[j]**2 / (2 * sigma ** 2))
+            kernel[i, j] = dataset[i] @ dataset[j]
+            if i-j:
+                kernel[j, i] = kernel[i, j]
+    return kernel
+
+
+@njit(parallel=True)
+def gauss_kernel(dataset, gamma):
+    n = dataset.shape[0]
+    kernel = np.zeros((n, n))
+    for i in prange(n):
+        for j in range(i, n):
+            kernel[i, j] = np.exp(sum(
+                (dataset[i] - dataset[j])**2) / (2 * gamma ** 2))
             if i-j:
                 kernel[j, i] = kernel[i, j]
     return kernel
@@ -110,20 +122,28 @@ def double_center(kernel):
 
 
 class KernelPCA():
-    def __init__(self, mode: Literal['polynomial', 'gauss'], d=2, delta=2, sigma=2) -> None:
+
+    mode = Literal['linear', 'poly', 'gauss']
+
+    def __init__(self, mode: mode, n_components=2, degree=3, gamma=None) -> None:
         self.mode = mode
-        self.d = d
-        self.delta = delta
-        self.sigma = sigma
+        self.d = n_components
+        self.degree = degree
+        self.gamma = gamma
 
     def fit(self, dataset):
-        self.mu = np.mean(dataset, axis=0)
-        self.sigma = np.std(dataset, axis=0)
-        self.dataset = (dataset-mu)/sigma
+        self.dataset = dataset
+        if not self.gamma:
+            self.gamma = 1 / self.dataset.shape[0]
 
     def transform(self):
-        kernel = poly_kernel(
-            self.dataset, self.delta) if self.mode == 'polynomial' else gauss_kernel(self.dataset, self.sigma)
+        match self.mode:
+            case 'poly':
+                kernel = poly_kernel(self.dataset, self.degree, self.gamma)
+            case 'gauss':
+                kernel = gauss_kernel(self.dataset, self.gamma)
+            case _:
+                kernel = linear_kernel(self.dataset)
         gram = double_center(kernel)
         self.s, self.u = np.linalg.eigh(gram)
         return np.sqrt(self.s[-self.d:]) * self.u[:, -self.d:]
