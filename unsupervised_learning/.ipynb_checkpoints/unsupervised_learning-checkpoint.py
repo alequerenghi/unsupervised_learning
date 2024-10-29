@@ -117,9 +117,7 @@ class KernelPCA():
         self.sigma = sigma
 
     def fit(self, dataset):
-        self.mu = np.mean(dataset, axis=0)
-        self.sigma = np.std(dataset, axis=0)
-        self.dataset = (dataset-mu)/sigma
+        self.dataset = dataset
 
     def transform(self):
         kernel = poly_kernel(
