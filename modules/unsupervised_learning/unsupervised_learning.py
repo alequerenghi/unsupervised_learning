@@ -1,33 +1,33 @@
 from sklearn.neighbors import NearestNeighbors
 from scipy.sparse import csr_matrix
 import heapq
-from numba import njit, prange
+from numba import njit, prange, int32
 from typing import Literal
 import numpy as np
 
 
-def mixGauss(means, sigmas, n):
+def mixGauss(means, gammas, n):
     """
     Parameters:
     means: matrix/list of float of dimension n_classes x dim_data
         Means of the Gaussian functions
-    sigmas: array/list of float of dimension n_classes
+    gammas: array/list of float of dimension n_classes
         Standard deviation of the Gaussian functinos
     n: int
         Number of points for each class
     """
     means = np.array(means)
-    sigmas = np.array(sigmas)
+    gammas = np.array(gammas)
 
     dim = np.shape(means)[1]
-    num_classes = sigmas.size
+    num_classes = gammas.size
 
     data = np.full(fill_value=np.inf, shape=(n*num_classes, dim))
     labels = np.zeros(n*num_classes)
 
-    for i, _ in enumerate(sigmas):
+    for i, _ in enumerate(gammas):
         data[i*n:(i+1)*n] = np.random.multivariate_normal(means[i],
-                                                          np.eye(dim)*sigmas[i]**2, n)
+                                                          np.eye(dim)*gammas[i]**2, n)
         labels[i*n:(i+1)*n] = i
 
     return data, labels
@@ -66,25 +66,37 @@ def swiss_roll(n):
 
 
 @njit(parallel=True)
-def poly_kernel(dataset, delta):
+def poly_kernel(dataset, degree, gamma):
     n = dataset.shape[0]
     kernel = np.zeros((n, n))
     for i in prange(n):
         for j in range(i, n):
-            kernel[i, j] = (dataset[i] @ dataset[j] + 1) ** delta
+            kernel[i, j] = (dataset[i] @ dataset[j] + gamma) ** degree
             if i-j:
                 kernel[j, i] = kernel[i, j]
     return kernel
 
 
 @njit(parallel=True)
-def gauss_kernel(dataset, sigma):
+def linear_kernel(dataset):
     n = dataset.shape[0]
     kernel = np.zeros((n, n))
     for i in prange(n):
         for j in range(i, n):
-            kernel[i, j] = np.exp(
-                dataset[i]**2 @ dataset[j]**2 / (2 * sigma ** 2))
+            kernel[i, j] = dataset[i] @ dataset[j]
+            if i-j:
+                kernel[j, i] = kernel[i, j]
+    return kernel
+
+
+@njit(parallel=True)
+def gauss_kernel(dataset, gamma):
+    n = dataset.shape[0]
+    kernel = np.zeros((n, n))
+    for i in prange(n):
+        for j in range(i, n):
+            kernel[i, j] = np.exp(sum(
+                (dataset[i] - dataset[j])**2) / (2 * gamma ** 2))
             if i-j:
                 kernel[j, i] = kernel[i, j]
     return kernel
@@ -110,18 +122,26 @@ def double_center(kernel):
 
 
 class KernelPCA():
-    def __init__(self, mode: Literal['polynomial', 'gauss'], d=2, delta=2, sigma=2) -> None:
+
+    def __init__(self, mode: Literal['linear', 'poly', 'gauss'], n_components=2, degree=3, gamma=None) -> None:
         self.mode = mode
-        self.d = d
-        self.delta = delta
-        self.sigma = sigma
+        self.d = n_components
+        self.degree = degree
+        self.gamma = gamma
 
     def fit(self, dataset):
         self.dataset = dataset
+        if not self.gamma:
+            self.gamma = 1 / self.dataset.shape[0]
 
     def transform(self):
-        kernel = poly_kernel(
-            self.dataset, self.delta) if self.mode == 'polynomial' else gauss_kernel(self.dataset, self.sigma)
+        match self.mode:
+            case 'poly':
+                kernel = poly_kernel(self.dataset, self.degree, self.gamma)
+            case 'gauss':
+                kernel = gauss_kernel(self.dataset, self.gamma)
+            case _:
+                kernel = linear_kernel(self.dataset)
         gram = double_center(kernel)
         self.s, self.u = np.linalg.eigh(gram)
         return np.sqrt(self.s[-self.d:]) * self.u[:, -self.d:]
@@ -144,12 +164,40 @@ def dijkstra(graph):
             if current_distance > dist[start_node, current_node]:
                 continue
             # _, cols = graph[current_node].nonzero()
-            # for neighbor in cols:
-            for neighbor, weight in zip(graph[current_node].indices, graph[current_node].data):
+            # for i in cols:
+            for i, weight in zip(graph[current_node].indices, graph[current_node].data):
+                distance = weight + current_distance
+                if distance < dist[start_node, i]:
+                    dist[start_node, i] = distance
+                    heapq.heappush(pq, (distance, i))
+    for i in range(n):
+        for j in range(i, n):
+            small = min(dist[i, j], dist[j, i])
+            dist[i, j] = small
+            dist[j, i] = small
+    return dist
+
+
+@njit(parallel=True)
+def dijkstra_par(data, indices, indptr):
+    n = indptr.shape[0]-1
+    dist = np.zeros((n, n))
+    dist.fill(np.inf)
+    for start_node in prange(n):
+        pq = [(0, start_node)]
+        dist[start_node, start_node] = 0
+        while pq:
+            current_distance, current_node = pq.pop(0)
+            current_node = int32(current_node)
+            if current_distance > dist[start_node, current_node]:
+                continue
+            for i in range(indptr[current_node], indptr[current_node+1]):
+                weight = data[i]
+                neighbor = indices[i]
                 distance = weight + current_distance
                 if distance < dist[start_node, neighbor]:
                     dist[start_node, neighbor] = distance
-                    heapq.heappush(pq, (distance, neighbor))
+                    pq.append((distance, neighbor))
     for i in range(n):
         for j in range(i, n):
             small = min(dist[i, j], dist[j, i])
@@ -190,41 +238,25 @@ class Isomap:
         # Build the graph
         neigh = NearestNeighbors(n_neighbors=self.n_neighbors)
         neigh.fit(dataset)
-        self.graph = neigh.kneighbors_graph(dataset, 'distance')
+        self.graph = neigh.kneighbors_graph(dataset, mode='distance')
 
     def transform(self, alg: Literal["dijkstra", "floyd_warshall"]):
         if (alg == 'dijkstra'):
-            dist = dijkstra(self.graph)
+            # self.graph)
+            # self.graph)
+            dist = dijkstra_par(
+                self.graph.data, self.graph.indices, self.graph.indptr)
         else:
             dist = floyd_warshall(self.graph)
         h = np.eye(self.n) - np.ones((self.n, self.n)) / self.n
         dist = dist ** 2
         gram = - h.dot(dist).dot(h)/2
-        s, u = np.linalg.eig(gram)
-        idx = np.argsort(s)[::-1]
-        self.s = s[idx]
-        self.u = u[:, idx]
-        return np.sqrt(self.s[:self.n_features])*self.u[:, :self.n_features]
+        s, u = np.linalg.eigh(gram)
+        return np.sqrt(s[-self.n_features:])*u[:, -self.n_features:]
 
     def fit_transform(self, dataset, alg='dijkstra'):
         self.fit(dataset)
         return self.transform(alg)
-
-    """        
-    def multidimensionalscaling(dist, k=2):
-            n = np.size(dist, axis=0)
-            gram = np.zeros((n, n))
-            col_sum = [np.sum(k**2) for k in dist]
-            for i in range(n):
-                for j in range(n):
-                    gram[i, j=-1/2*dist[i,j]**2+1/2*(1/n*(col_sum[j]+col_sum[i])-1/n**2 *np.sum(col_sum))
-            s, u = np.linalg.eig(gram)
-            idx = np.argsort(s)[::-1]
-            s = s[idx]
-            u = u[idx]
-            return u[:,:k] * np.sqrt(s[:k])
-    
-    """
 
 
 class Pca():
