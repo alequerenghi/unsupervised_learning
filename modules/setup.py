@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='unsupervised_learning',
-    version='0.1.4.4',
+    version='0.1.4.5',
     description='Unsupervised learning functions',
     author='John Doe',
     author_email='jdoe@example.com',
