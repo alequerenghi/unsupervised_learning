@@ -1,0 +1,10 @@
+Metadata-Version: 2.1
+Name: unsupervised_learning
+Version: 0.1.4.5
+Summary: Unsupervised learning functions
+Author: John Doe
+Author-email: jdoe@example.com
+Requires-Dist: numpy
+Requires-Dist: scipy
+Requires-Dist: scikit-learn
+Requires-Dist: numba
