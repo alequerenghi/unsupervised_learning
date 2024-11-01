@@ -101,7 +101,7 @@ def gauss_kernel(dataset, gamma):
     kernel = np.zeros((n, n))
     for i in prange(n):
         for j in range(i, n):
-            kernel[i, j] = np.exp(sum(
+            kernel[i, j] = np.exp(-sum(
                 (dataset[i] - dataset[j])**2) / (2 * gamma ** 2))
             if i-j:
                 kernel[j, i] = kernel[i, j]
