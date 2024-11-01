@@ -12,21 +12,19 @@ class Isomap:
         self.alg = alg
 
     def fit(self, dataset):
-        self.n = dataset.shape[0]
-        if not self.n_features:
+        if self.n_features is None:
             self.n_features = dataset.shape[1]
-        self.mean = np.mean(dataset, axis=0)
-        self.std = np.std(dataset, axis=0)
+        # self.mean = np.mean(dataset, axis=0)
+        # self.std = np.std(dataset, axis=0)
+        self.neigh = NearestNeighbors(n_neighbors=self.n_neighbors)
+        self.neigh.fit(dataset)
 
     def transform(self, dataset):
-        dataset = (dataset-self.mean)/self.std
-        neigh = NearestNeighbors(n_neighbors=self.n_neighbors)
-        neigh.fit(dataset)
-        # distances, indices = neigh.kneighbors(dataset)
-        self.graph = neigh.kneighbors_graph(dataset)
-        dist = shortest_path(self.graph.data, self.alg,
-                             self.graph.indices, self.graph.indptr, self.graph)
-        h = np.eye(self.n) - np.ones((self.n, self.n)) / self.n
+        n = dataset.shape[0]
+        # dataset = (dataset-self.mean)/self.std
+        data, indices = self.neigh.kneighbors(dataset)
+        dist = shortest_path(self.alg, data, indices)
+        h = np.eye(n) - np.ones((n, n)) / n
         dist = dist ** 2
         gram = - h.dot(dist).dot(h)/2
         s, u = np.linalg.eigh(gram)

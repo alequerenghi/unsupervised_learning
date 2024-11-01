@@ -127,17 +127,18 @@ def double_center(kernel):
     return gram
 
 
-def shortest_path(dataset, alg, indices, indptr, graph):
+def shortest_path(alg, data, indices):
     match alg:
         case 'fw':
-            return floyd_warshall(graph)
+            return floyd_warshall(data, indices)
         case _:
-            return dijkstra(dataset, indices, indptr)
+            return dijkstra(data, indices)
 
 
 @njit(parallel=True)
-def dijkstra(data, indices, indptr):
-    n = indptr.shape[0]-1
+def dijkstra(data: np.ndarray, indices: np.ndarray):
+    n = indices.shape[0]
+    n_neighbors = indices.shape[1]
     dist = np.zeros((n, n))
     dist.fill(np.inf)
     for start_node in prange(n):
@@ -148,12 +149,14 @@ def dijkstra(data, indices, indptr):
             current_node = int32(current_node)
             if current_distance > dist[start_node, current_node]:
                 continue
-            for i in range(indptr[current_node], indptr[current_node+1]):
-                weight = data[i]
-                neighbor = indices[i]
+            for i in range(1, n_neighbors):
+                neighbor = indices[current_node, i]
+                weight = data[current_node, i]
                 distance = weight + current_distance
                 if distance < dist[start_node, neighbor]:
-                    dist[start_node, neighbor] = distance
+                    # small = min(distance, dist[neighbor, start_node])
+                    dist[start_node, neighbor] = distance  # small
+                    # dist[neighbor, start_node] = small
                     pq.append((distance, neighbor))
     for i in range(n):
         for j in range(i, n):
