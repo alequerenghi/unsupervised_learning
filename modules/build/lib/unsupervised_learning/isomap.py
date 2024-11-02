@@ -1,12 +1,17 @@
-from typing import Literal
+
 from sklearn.neighbors import NearestNeighbors
 import numpy as np
-from unsupervised_learning import shortest_path
+from unsupervised_learning import shortest_path, swiss_roll
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import OrdinalEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
 
 
 class Isomap:
 
-    def __init__(self, alg: Literal["dijkstra", "floyd_warshall"], n_neighbors=5, n_features=None):
+    def __init__(self, alg, n_neighbors=5, n_features=None):
         self.n_neighbors = n_neighbors
         self.n_features = n_features
         self.alg = alg

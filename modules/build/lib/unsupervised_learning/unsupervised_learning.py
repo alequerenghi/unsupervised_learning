@@ -136,7 +136,7 @@ def shortest_path(alg, data, indices):
 
 
 @njit(parallel=True)
-def dijkstra(data: np.ndarray, indices: np.ndarray):
+def dijkstra(data, indices):
     n = indices.shape[0]
     n_neighbors = indices.shape[1]
     dist = np.zeros((n, n))
