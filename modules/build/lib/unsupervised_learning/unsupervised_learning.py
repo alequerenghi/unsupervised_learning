@@ -1,5 +1,6 @@
 from numba import njit, prange, int32
 import numpy as np
+from sklearn.neighbors import NearestNeighbors
 
 
 def mixGauss(means, gammas, n):
@@ -166,22 +167,20 @@ def dijkstra(data, indices):
     return dist
 
 
-def floyd_warshall(graph):
+@njit(parallel=True)
+def floyd_warshall(data, indices):
     # Build the distance matrix with Floyd-Warshall
-    n = np.size(graph, axis=0)
-    d_matrix = np.zeros((n, n))
-    d_matrix.fill(np.inf)
-    for i in range(n):
-        for j in range(n):
-            # if nonzero then write in the distance matrix
-            if graph[i, j]:
-                d_matrix[i, j] = graph[i, j]
-                d_matrix[j, i] = graph[i, j]
-    for i in range(n):
-        d_matrix[i, i] = 0
+    n = indices.shape[0]
+    n_neighbors = indices.shape[1]
+    dist = np.zeros((n, n))
+    dist.fill(np.inf)
+    for i in prange(n):
+        for j in range(n_neighbors):
+            neighbor = indices[i, j]
+            dist[i, neighbor] = data[i, j]
     for k in range(n):
-        for i in range(n):
+        for i in prange(n):
             for j in range(n):
-                d_matrix[i, j] = min(
-                    d_matrix[i, j], d_matrix[i, k] + d_matrix[k, j])
-    return d_matrix
+                dist[i, j] = min(
+                    dist[i, j], dist[i, k] + dist[k, j])
+    return dist
