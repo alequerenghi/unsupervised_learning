@@ -2,26 +2,24 @@
 from sklearn.neighbors import NearestNeighbors
 import numpy as np
 from unsupervised_learning import shortest_path
+from typing import Literal
 
 
 class Isomap:
 
-    def __init__(self, alg, n_neighbors=5, n_features=None):
+    def __init__(self, alg: Literal['fw', 'd'], n_neighbors=5, n_features=None):
         self.n_neighbors = n_neighbors
         self.n_features = n_features
         self.alg = alg
 
-    def fit(self, dataset):
+    def fit(self, dataset: np.ndarray):
         if self.n_features is None:
             self.n_features = dataset.shape[1]
-        # self.mean = np.mean(dataset, axis=0)
-        # self.std = np.std(dataset, axis=0)
         self.neigh = NearestNeighbors(n_neighbors=self.n_neighbors)
         self.neigh.fit(dataset)
 
-    def transform(self, dataset):
+    def transform(self, dataset: np.ndarray):
         n = dataset.shape[0]
-        # dataset = (dataset-self.mean)/self.std
         data, indices = self.neigh.kneighbors(dataset)
         dist = shortest_path(self.alg, data, indices)
         h = np.eye(n) - np.ones((n, n)) / n
