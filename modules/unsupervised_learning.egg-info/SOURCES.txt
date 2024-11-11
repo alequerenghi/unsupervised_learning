@@ -3,6 +3,7 @@ unsupervised_learning/__init__.py
 unsupervised_learning/intrinsicdimensionality.py
 unsupervised_learning/isomap.py
 unsupervised_learning/kernelpca.py
+unsupervised_learning/kmeans.py
 unsupervised_learning/pca.py
 unsupervised_learning/unsupervised_learning.py
 unsupervised_learning.egg-info/PKG-INFO
