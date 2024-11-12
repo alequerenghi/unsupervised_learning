@@ -1,8 +1,8 @@
-from .unsupervised_learning import swiss_roll, label_noise, mixGauss, build_kernel, double_center, shortest_path, histograms, kde
+from .unsupervised_learning import swiss_roll, label_noise, mixGauss, histograms, kde
 from .pca import Pca
 from .isomap import Isomap
 from .kernelpca import KernelPCA
-from .intrinsicdimensionality import IntrinsicDimension
+from .intrinsicdimensionality import two_nn
 
-__all__ = ["Pca", "Isomap", "KernelPCA", "swiss_roll", "label_noise", "histograms", "kde",
-           "mixGauss", "build_kernel", "double_center", "shortest_path", "IntrinsicDimension"]
+__all__ = ["Pca", "Isomap", "KernelPCA", "swiss_roll",
+           "label_noise", "histograms", "kde", "two_nn", "mixGauss"]
