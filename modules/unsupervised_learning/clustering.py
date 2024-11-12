@@ -1,6 +1,29 @@
 import numpy as np
 import random
 from sklearn.neighbors import NearestNeighbors
+from numba import njit, int32, prange
+
+
+@njit(parallel=True)
+def mutual_information_criterion(x: np.ndarray, y: np.ndarray):
+    mi = np.zeros((x.shape[1]))
+    n_rows = x.shape[0]
+    n_features = y.max()+1
+    # for each feature i
+    for i in prange(x.shape[1]):
+        n_vals = x[:, i].max()+1
+        value_counts = np.zeros((n_vals, n_features))
+        # count the observation wrt label and feature value
+        for n in range(n_rows):
+            value_counts[int32(x[n, i]), int32(y[n])] += 1
+        temp = 0
+        # compute the probabilities
+        for feature in range(n_features):
+            for val in range(n_vals):
+                temp += value_counts[val, feature] * np.log(
+                    value_counts[val, feature] / value_counts[val, :].sum() / value_counts[:, feature].sum()*n_rows) / n_rows
+        mi[i] = temp
+    return mi
 
 
 def kmeans(dataset, k, kmeans_plus_plus=True):
