@@ -59,28 +59,3 @@ def swiss_roll(n):
     data[:, 1] = phi*np.sin(phi)
     data[:, 2] = psi
     return data
-
-
-def histograms(dataset):
-    dataset = np.sort(dataset)
-    n = dataset.shape[0]
-    delta = 2 * (dataset[int(n/4*3)]-dataset[int(n/4)]) / np.cbrt(n)
-    dataset = dataset / delta
-    histo = [0] * (int(dataset[n-1]/delta)+1)
-    for i in dataset:
-        histo[int(i/delta)] += 1
-    return histo
-
-
-def kde(dataset):
-    n = dataset.shape[0]
-    sorted = np.sort(dataset)
-    h = 0.9 * min(dataset.std() ** 2,
-                  sorted[int(n/4*3)]-sorted[int(n/4)]/1.34) * n ** (- 1/5)
-    rho = [0] * n
-    for i in prange(n):
-        kernel = 0
-        for j in range(i, n):
-            kernel += np.exp(-(((dataset[i] - dataset[j])/h) ** 2) / 2)
-        rho[i] = kernel / np.sqrt(2*np.pi) / n / h
-    return rho

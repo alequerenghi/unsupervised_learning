@@ -1,6 +1,7 @@
 setup.py
 unsupervised_learning/__init__.py
 unsupervised_learning/clustering.py
+unsupervised_learning/densityestimation.py
 unsupervised_learning/intrinsicdimensionality.py
 unsupervised_learning/isomap.py
 unsupervised_learning/kernelpca.py

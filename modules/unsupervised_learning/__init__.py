@@ -4,6 +4,7 @@ from .isomap import Isomap
 from .kernelpca import KernelPCA
 from .intrinsicdimensionality import two_nn
 from .clustering import *
+from .densityestimation import *
 
 __all__ = ["Pca", "Isomap", "KernelPCA", "swiss_roll", "label_noise", "histograms",
-           "kde", "two_nn", "mixGauss", "kmeans", "mutual_information_criterion"]
+           "kde", "two_nn", "mixGauss", "kmeans", "mutual_information_criterion", "histograms", "kde"]
