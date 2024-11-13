@@ -9,7 +9,7 @@ def histograms(X: np.ndarray, bins=None):
     if bins is None:
         IQR = np.quantile(X, 0.75) - np.quantile(X, 0.25)
         delta = 2 * IQR / np.cbrt(n)
-        bins = int(max(X) / (delta-1))
+        bins = int(max(X) / delta)+ 1
     else:
         delta = max(X)/(bins-1)
     X = X / delta
