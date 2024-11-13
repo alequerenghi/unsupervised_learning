@@ -88,11 +88,6 @@ def kmeans_plus_plus(dataset, k):
     return clusters
 
 
-def variables_ranking(dataset):
-
-    return 0
-
-
 """
 def kmedoids(dataset, clusters, assigned):
     for cluster in clusters:

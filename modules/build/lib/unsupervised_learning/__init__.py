@@ -1,4 +1,4 @@
-from .unsupervised_learning import swiss_roll, label_noise, mixGauss, histograms, kde
+from .unsupervised_learning import swiss_roll, label_noise, mixGauss
 from .pca import Pca
 from .isomap import Isomap
 from .kernelpca import KernelPCA
@@ -7,4 +7,4 @@ from .clustering import *
 from .densityestimation import *
 
 __all__ = ["Pca", "Isomap", "KernelPCA", "swiss_roll", "label_noise", "histograms",
-           "kde", "two_nn", "mixGauss", "kmeans", "mutual_information_criterion", "histograms", "kde"]
+           "kde", "two_nn", "mixGauss", "kmeans", "mutual_information_criterion", "histograms", "KernelDensity"]
