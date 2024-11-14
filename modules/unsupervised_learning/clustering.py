@@ -103,12 +103,12 @@ def kmedoids(X: np.ndarray, k, kmeans_plus_plus=True):
 
 def recompute_medoids(X: np.ndarray, indices: np.ndarray, clusters: np.ndarray):
     for cluster_k in clusters:
-        in_cluster_k = X[np.where(indices == cluster_k)]
-        for i in in_cluster_k:
-            if indices[i] == cluster_k:
-                in_cluster_weight += X[indices[i]]
-                in_cluster_count += 1
-        clusters[cluster_k] = in_cluster_weight / in_cluster_count
+        in_cluster_k = np.where(indices == cluster_k)
+        nodes = X[in_cluster_k] ** 2
+        dist = np.zeros(in_cluster_k.shape)
+        for i in range(nodes.shape):
+            dist[i] = abs(sum(nodes - nodes[i]))
+        clusters[cluster_k] = in_cluster_k[np.argmin(dist)]
     return clusters
 
 
