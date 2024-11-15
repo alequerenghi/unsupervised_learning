@@ -1,5 +1,4 @@
 import numpy as np
-import random
 from sklearn.neighbors import NearestNeighbors
 from numba import njit, int32, prange
 
@@ -26,18 +25,11 @@ def mutual_information_criterion(x: np.ndarray, y: np.ndarray):
     return mi
 
 
-def kmeans(X: np.ndarray, k, kmeans_plus_plus=True):
+def kmeans(X: np.ndarray, k):
     N = X.shape[0]
     neigh = NearestNeighbors(n_neighbors=1)
     new_clusters = np.zeros((k, X.shape[1]))
-
-    # initialize
-    if kmeans_plus_plus:
-        clusters = kmeans_plus_plus(X, k)
-    else:
-        clusters = np.zeros((k, X.shape[1]))
-        for i in range(k):
-            clusters[i] = X[random.randint(N)]
+    clusters = kmeans_plus_plus(X, k)
 
     # until stops moving
     while all(new_clusters == clusters):
@@ -50,13 +42,9 @@ def kmeans(X: np.ndarray, k, kmeans_plus_plus=True):
 
 def recompute_centers(X: np.ndarray, indices: np.ndarray, clusters: np.ndarray):
     for cluster_k in range(clusters.shape[0]):
-        in_cluster_weight = np.zeros(X.shape[1])
-        in_cluster_count = 0
-        for i in range(X.shape[0]):
-            if indices[i] == cluster_k:
-                in_cluster_weight += X[indices[i]]
-                in_cluster_count += 1
-        clusters[cluster_k] = in_cluster_weight / in_cluster_count
+        in_cluster_k = np.where(indices == cluster_k)
+        nodes = X[in_cluster_k]
+        clusters[cluster_k] = sum(nodes) / nodes.shape[0] 
     return clusters
 
 
@@ -75,7 +63,7 @@ def kmeans_plus_plus(X: np.ndarray, k: int):
                 closest = min(abs(sum(X[node] - clusters[j])), closest)
             d[node] = int(closest)
 
-        clusters[cluster] = X[np.argmax(random.randint(d))]
+        clusters[cluster] = X[np.argmax(np.random.randint(d))]
     return clusters
 
 
@@ -88,9 +76,7 @@ def kmedoids(X: np.ndarray, k, kmeans_plus_plus=True):
     if kmeans_plus_plus:
         clusters = kmeans_plus_plus(X, k)
     else:
-        clusters = np.zeros(k)
-        for i in range(k):
-            clusters[i] = random.randint(N)
+        clusters = np.random.randint(N, size=k)
 
     # until stops moving
     while all(new_clusters == clusters):
@@ -105,8 +91,8 @@ def recompute_medoids(X: np.ndarray, indices: np.ndarray, clusters: np.ndarray):
     for cluster_k in clusters:
         in_cluster_k = np.where(indices == cluster_k)
         nodes = X[in_cluster_k] ** 2
-        dist = np.zeros(in_cluster_k.shape)
-        for i in range(nodes.shape):
+        dist = np.zeros(in_cluster_k.shape[0])
+        for i in range(in_cluster_k.shape[0]):
             dist[i] = abs(sum(nodes - nodes[i]))
         clusters[cluster_k] = in_cluster_k[np.argmin(dist)]
     return clusters
@@ -127,5 +113,5 @@ def kmeans_plus_plus(X: np.ndarray, k: int):
                 closest = min(abs(sum(X[node] - clusters[j])), closest)
             d[node] = int(closest)
 
-        clusters[cluster] = X[np.argmax(random.randint(d))]
+        clusters[cluster] = X[np.argmax(np.random.randint(d))]
     return clusters

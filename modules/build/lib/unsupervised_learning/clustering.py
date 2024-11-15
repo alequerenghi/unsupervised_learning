@@ -1,5 +1,4 @@
 import numpy as np
-import random
 from sklearn.neighbors import NearestNeighbors
 from numba import njit, int32, prange
 
@@ -26,74 +25,93 @@ def mutual_information_criterion(x: np.ndarray, y: np.ndarray):
     return mi
 
 
-def kmeans(dataset, k, kmeans_plus_plus=True):
-    # pick clusters at random or with kmenas++
-    if kmeans_plus_plus:
-        clusters = kmeans_plus_plus(dataset, k)
-    else:
-        clusters = []
-        for i in range(k):
-            clusters.append(random.randint(dataset.shape[0]))
+def kmeans(X: np.ndarray, k):
+    N = X.shape[0]
     neigh = NearestNeighbors(n_neighbors=1)
-    # contains the index of the assigned cluster
-    assigned_clusters = [clusters[0]] * dataset.shape[0]
-    # repeat until stops moving
-    while True:
-        neigh.fit(dataset[clusters])
-        new_clusters = [] * clusters.shape[0]
-        # assign to closest center
-        data, indices = neigh.kneighbors(dataset)
-        # recompute centers
-        for i in range(k):
-            weight = 0
-            n = 0
-            for j in range(indices.shape[0]):
-                if indices[i] is k:
-                    weight += data[i]
-                    n += 1
-            new_clusters[i] = weight / n
-        # clusers stop movingK
-        if (new_clusters != clusters).any():
-            break
-        clusters = new_clusters
-        assigned_clusters = indices
-    return assigned_clusters
+    new_clusters = np.zeros((k, X.shape[1]))
+    clusters = kmeans_plus_plus(X, k)
 
-
-def kmeans_plus_plus(dataset, k):
-    # pick center at random
-    clusters = []
-    clusters.add(random.randint(dataset.shape[0]))
-    # until all clusters are added
-    for cluster in range(k):
-        d = [0] * dataset.shape[0]
-        # for all instances do
-        for node in dataset:
-            closest = 100
-            # find closest centroid
-            for j in range(k - cluster):
-                temp = abs(dataset[node] ** 2 - dataset[cluster[j]])
-                if temp < closest:
-                    closest = temp
-            d[node] = closest
-        # use ptobability to add new node
-        current = 0
-        new_cluster = 0
-        for node in range(dataset.shape[0]):
-            temp = random.randint(int(d[node]))
-            if temp > current:
-                current = temp
-                new_cluster = node
-        clusters.append(new_cluster)
+    # until stops moving
+    while all(new_clusters == clusters):
+        new_clusters = clusters
+        neigh.fit(clusters)
+        indices = neigh.kneighbors(X, return_distance=False)
+        clusters = recompute_centers(X, indices, clusters)
     return clusters
 
 
-"""
-def kmedoids(dataset, clusters, assigned):
-    for cluster in clusters:
-        previously_assigned  = []
-        for node in range(dataset.shape[0]):
-            if assigned[node] == cluster:
-                previously_assigned.append(dataset[node])
-        np.median(previously_assigned)
-        """
+def recompute_centers(X: np.ndarray, indices: np.ndarray, clusters: np.ndarray):
+    for cluster_k in range(clusters.shape[0]):
+        in_cluster_k = np.where(indices == cluster_k)
+        nodes = X[in_cluster_k]
+        clusters[cluster_k] = sum(nodes) / nodes.shape[0] 
+    return clusters
+
+
+def kmeans_plus_plus(X: np.ndarray, k: int):
+    X = X ** 2
+    clusters = np.zeros(k, X.shape[1])
+    d = np.zeros(X.shape)
+
+    clusters[0] = X[random.randint(X.shape[0])]
+    # until all clusters are added
+    for cluster in range(k):
+        for node in X:
+            closest = np.inf
+            # find closest centroid
+            for j in range(cluster):
+                closest = min(abs(sum(X[node] - clusters[j])), closest)
+            d[node] = int(closest)
+
+        clusters[cluster] = X[np.argmax(np.random.randint(d))]
+    return clusters
+
+
+def kmedoids(X: np.ndarray, k, kmeans_plus_plus=True):
+    N = X.shape[0]
+    neigh = NearestNeighbors(n_neighbors=1)
+    new_clusters = np.zeros(k)
+
+    # initialize
+    if kmeans_plus_plus:
+        clusters = kmeans_plus_plus(X, k)
+    else:
+        clusters = np.random.randint(N, size=k)
+
+    # until stops moving
+    while all(new_clusters == clusters):
+        new_clusters = clusters
+        neigh.fit(clusters)
+        indices = neigh.kneighbors(X, return_distance=False)
+        clusters = recompute_medoids(X, indices, clusters)
+    return indices
+
+
+def recompute_medoids(X: np.ndarray, indices: np.ndarray, clusters: np.ndarray):
+    for cluster_k in clusters:
+        in_cluster_k = np.where(indices == cluster_k)
+        nodes = X[in_cluster_k] ** 2
+        dist = np.zeros(in_cluster_k.shape[0])
+        for i in range(in_cluster_k.shape[0]):
+            dist[i] = abs(sum(nodes - nodes[i]))
+        clusters[cluster_k] = in_cluster_k[np.argmin(dist)]
+    return clusters
+
+
+def kmeans_plus_plus(X: np.ndarray, k: int):
+    X = X ** 2
+    clusters = np.zeros(k, X.shape[1])
+    d = np.zeros(X.shape)
+
+    clusters[0] = X[random.randint(X.shape[0])]
+    # until all clusters are added
+    for cluster in range(k):
+        for node in X:
+            closest = np.inf
+            # find closest centroid
+            for j in range(cluster):
+                closest = min(abs(sum(X[node] - clusters[j])), closest)
+            d[node] = int(closest)
+
+        clusters[cluster] = X[np.argmax(np.random.randint(d))]
+    return clusters
