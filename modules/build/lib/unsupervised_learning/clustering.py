@@ -1,35 +1,39 @@
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
-from numba import njit, int32, prange
+from numba import njit, prange
 
 
 @njit(parallel=True)
-def mutual_information_criterion(x: np.ndarray, y: np.ndarray):
-    mi = np.zeros((x.shape[1]))
-    n_rows = x.shape[0]
-    n_features = y.max()+1
+def mutual_information_criterion(X: np.ndarray, y: np.ndarray):
+    y = y.flatten()
+    mi = np.zeros(X.shape[1])
+    n_rows = X.shape[0]
+    n_features = max(y)+1
     # for each feature i
-    for i in prange(x.shape[1]):
-        n_vals = x[:, i].max()+1
+    for i in prange(X.shape[1]):
+        n_vals = max(X[:, i])+1
         value_counts = np.zeros((n_vals, n_features))
         # count the observation wrt label and feature value
         for n in range(n_rows):
-            value_counts[int32(x[n, i]), int32(y[n])] += 1
+            value_counts[int(X[n, i]), int(y[n])] += 1
         temp = 0
         # compute the probabilities
         for feature in range(n_features):
             for val in range(n_vals):
-                temp += value_counts[val, feature] * np.log(
-                    value_counts[val, feature] / value_counts[val, :].sum() / value_counts[:, feature].sum()*n_rows) / n_rows
+                temp += value_counts[val, feature] * np.log(value_counts[val, feature] / sum(
+                    value_counts[val, :]) / sum(value_counts[:, feature])*n_rows) / n_rows
         mi[i] = temp
     return mi
 
 
-def kmeans(X: np.ndarray, k):
+def kmeans(X: np.ndarray, k, kmeans_plus_plu=True):
     N = X.shape[0]
     neigh = NearestNeighbors(n_neighbors=1)
     new_clusters = np.zeros((k, X.shape[1]))
-    clusters = kmeans_plus_plus(X, k)
+    if kmeans_plus_plu:
+        clusters = kmeans_plus_plus(X, k)
+    else:
+        clusters = X[np.random.randint(X.shape[0], size=k)]
 
     # until stops moving
     while all(new_clusters == clusters):
@@ -44,7 +48,7 @@ def recompute_centers(X: np.ndarray, indices: np.ndarray, clusters: np.ndarray):
     for cluster_k in range(clusters.shape[0]):
         in_cluster_k = np.where(indices == cluster_k)
         nodes = X[in_cluster_k]
-        clusters[cluster_k] = sum(nodes) / nodes.shape[0] 
+        clusters[cluster_k] = sum(nodes) / nodes.shape[0]
     return clusters
 
 
@@ -53,7 +57,7 @@ def kmeans_plus_plus(X: np.ndarray, k: int):
     clusters = np.zeros(k, X.shape[1])
     d = np.zeros(X.shape)
 
-    clusters[0] = X[random.randint(X.shape[0])]
+    clusters[0] = X[np.random.randint(X.shape[0])]
     # until all clusters are added
     for cluster in range(k):
         for node in X:
@@ -67,16 +71,12 @@ def kmeans_plus_plus(X: np.ndarray, k: int):
     return clusters
 
 
-def kmedoids(X: np.ndarray, k, kmeans_plus_plus=True):
+def kmedoids(X: np.ndarray, k):
     N = X.shape[0]
     neigh = NearestNeighbors(n_neighbors=1)
     new_clusters = np.zeros(k)
 
-    # initialize
-    if kmeans_plus_plus:
-        clusters = kmeans_plus_plus(X, k)
-    else:
-        clusters = np.random.randint(N, size=k)
+    clusters = kmedoids_plus_plus(X, k)
 
     # until stops moving
     while all(new_clusters == clusters):
@@ -98,12 +98,12 @@ def recompute_medoids(X: np.ndarray, indices: np.ndarray, clusters: np.ndarray):
     return clusters
 
 
-def kmeans_plus_plus(X: np.ndarray, k: int):
+def kmedoids_plus_plus(X: np.ndarray, k: int):
     X = X ** 2
-    clusters = np.zeros(k, X.shape[1])
+    clusters = np.zeros(k)
     d = np.zeros(X.shape)
 
-    clusters[0] = X[random.randint(X.shape[0])]
+    clusters[0] = X[np.random.randint(X.shape[0])]
     # until all clusters are added
     for cluster in range(k):
         for node in X:
