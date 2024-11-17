@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
-from numba import njit, prange
+from numba import njit, prange, int64
+from typing import Literal
 
 
 @njit(parallel=True)
@@ -26,92 +27,134 @@ def mutual_information_criterion(X: np.ndarray, y: np.ndarray):
     return mi
 
 
-def kmeans(X: np.ndarray, k, kmeans_plus_plu=True):
+def kmeans(X: np.ndarray, k, init, max_iter):
     N = X.shape[0]
     neigh = NearestNeighbors(n_neighbors=1)
-    new_clusters = np.zeros((k, X.shape[1]))
-    if kmeans_plus_plu:
-        clusters = kmeans_plus_plus(X, k)
+    new_centers = np.zeros((k, X.shape[1]))
+    if init == 'kmeans++':
+        centers = X[kmeans_plus_plus(X, k)]
     else:
-        clusters = X[np.random.randint(X.shape[0], size=k)]
+        centers = X[np.random.randint(X.shape[0], size=k)]
 
     # until stops moving
-    while all(new_clusters == clusters):
-        new_clusters = clusters
-        neigh.fit(clusters)
-        indices = neigh.kneighbors(X, return_distance=False)
-        clusters = recompute_centers(X, indices, clusters)
-    return clusters
+    for _ in range(max_iter):
+        if (new_centers == centers).all():
+            break
+        else:
+            new_centers = np.copy(centers)
+            neigh.fit(centers)
+            indices = neigh.kneighbors(X, return_distance=False)
+            centers = recompute_cluster_centers(X, indices, k)
+    return centers
 
 
-def recompute_centers(X: np.ndarray, indices: np.ndarray, clusters: np.ndarray):
-    for cluster_k in range(clusters.shape[0]):
+@njit(parallel=True)
+def recompute_cluster_centers(X: np.ndarray, indices: np.ndarray, k):
+    indices = indices.flatten()
+    centers = np.zeros((k, X.shape[1]))
+    for cluster_k in prange(k):
         in_cluster_k = np.where(indices == cluster_k)
         nodes = X[in_cluster_k]
-        clusters[cluster_k] = sum(nodes) / nodes.shape[0]
+        centers[cluster_k] = np.sum(nodes, axis=0) / nodes.shape[0]
+    return centers
+
+
+def kmedoids(X: np.ndarray, k, init, max_iter):
+    N = X.shape[0]
+    neigh = NearestNeighbors(n_neighbors=1)
+    new_centers = np.zeros(k)
+    if init == 'kmeans++':
+        centers = kmeans_plus_plus(X, k)
+    else:
+        centers = np.random.randint(X.shape[0], size=k)
+
+    # until stops moving
+    for _ in range(max_iter):
+        if (new_centers == centers).all():
+            break
+        else:
+            new_centers = np.array(centers, copy=True)
+            neigh.fit(X[centers])
+            indices = neigh.kneighbors(X, return_distance=False)
+            centers = recompute_medoid_centers(X, indices, k)
+    return centers
+
+
+@njit(parallel=True)
+def recompute_medoid_centers(X: np.ndarray, indices: np.ndarray, k):
+    indices = indices.flatten()
+    clusters = np.zeros(k, dtype=int64)
+    for cluster in prange(k):
+        in_cluster = np.where(indices == cluster)[0]
+        nodes = X[in_cluster] ** 2
+        dist = np.zeros(len(in_cluster))
+        for i in range(dist.shape[0]):
+            dist[i] = np.sum(np.sqrt(abs(np.sum(nodes - nodes[i], axis=1))))
+        clusters[cluster] = in_cluster[np.argmin(dist)]
     return clusters
 
 
 def kmeans_plus_plus(X: np.ndarray, k: int):
     X = X ** 2
-    clusters = np.zeros(k, X.shape[1])
-    d = np.zeros(X.shape)
+    centers = np.zeros(k, dtype=int)
+    d = np.zeros(X.shape[0], dtype=int)
 
-    clusters[0] = X[np.random.randint(X.shape[0])]
+    centers[0] = np.random.randint(low=X.shape[0])
     # until all clusters are added
     for cluster in range(k):
-        for node in X:
+        for idx, node in enumerate(X):
             closest = np.inf
             # find closest centroid
-            for j in range(cluster):
-                closest = min(abs(sum(X[node] - clusters[j])), closest)
-            d[node] = int(closest)
-
-        clusters[cluster] = X[np.argmax(np.random.randint(d))]
-    return clusters
-
-
-def kmedoids(X: np.ndarray, k):
-    N = X.shape[0]
-    neigh = NearestNeighbors(n_neighbors=1)
-    new_clusters = np.zeros(k)
-
-    clusters = kmedoids_plus_plus(X, k)
-
-    # until stops moving
-    while all(new_clusters == clusters):
-        new_clusters = clusters
-        neigh.fit(clusters)
-        indices = neigh.kneighbors(X, return_distance=False)
-        clusters = recompute_medoids(X, indices, clusters)
-    return indices
+            for j in range(cluster+1):
+                closest = min(
+                    abs(np.sum(node - X[centers[j]])), closest)
+            d[idx] = closest
+        centers[cluster] = np.argmax(np.random.randint(d+1))
+    return centers
 
 
-def recompute_medoids(X: np.ndarray, indices: np.ndarray, clusters: np.ndarray):
-    for cluster_k in clusters:
-        in_cluster_k = np.where(indices == cluster_k)
-        nodes = X[in_cluster_k] ** 2
-        dist = np.zeros(in_cluster_k.shape[0])
-        for i in range(in_cluster_k.shape[0]):
-            dist[i] = abs(sum(nodes - nodes[i]))
-        clusters[cluster_k] = in_cluster_k[np.argmin(dist)]
-    return clusters
+class KMeans:
+    def __init__(self, n_clusters=8, init: Literal['random', 'kmeans++'] = 'kmeans++', max_iter=300):
+        self.n_clusters = n_clusters
+        self.init = init
+        self.max_iter = max_iter
+
+    def fit(self, X: np.ndarray):
+        self.centers = kmeans(X, self.n_clusters, self.init, self.max_iter)
+        return self
+
+    def predict(self, X: np.ndarray):
+        clusters = NearestNeighbors(n_neighbors=1).fit(
+            self.centers).kneighbors(X, return_distance=False)
+        self.loss = self.compute_loss(clusters)
+        return clusters
+
+    def fit_predict(self, X: np.ndarray):
+        return self.fit(X).predict(X)
+
+    def compute_loss(self, clusters: np.ndarray):
+        clusters = clusters ** 2
+        loss = 0
+        for cluster in range(self.n_clusters):
+            in_cluster = np.where(clusters == cluster)[0]
+            loss += np.sum(
+                np.sqrt(np.abs(np.sum(clusters[in_cluster] - self.centers[cluster] ** 2, axis=1))))
+        return loss
 
 
-def kmedoids_plus_plus(X: np.ndarray, k: int):
-    X = X ** 2
-    clusters = np.zeros(k)
-    d = np.zeros(X.shape)
+class KMedoids:
+    def __init__(self, n_clusters=8, init: Literal['random', 'kmeans++'] = 'kmeans++', max_iter=300):
+        self.n_clusters = n_clusters
+        self.init = init
+        self.max_iter = max_iter
+        return self
 
-    clusters[0] = X[np.random.randint(X.shape[0])]
-    # until all clusters are added
-    for cluster in range(k):
-        for node in X:
-            closest = np.inf
-            # find closest centroid
-            for j in range(cluster):
-                closest = min(abs(sum(X[node] - clusters[j])), closest)
-            d[node] = int(closest)
+    def fit(self, X: np.ndarray):
+        self.centers = X[kmedoids(X, self.k, self.init, self.max_iter)]
+        return self
 
-        clusters[cluster] = X[np.argmax(np.random.randint(d))]
-    return clusters
+    def predict(self, X: np.ndarray):
+        return NearestNeighbors(n_neighbors=1).fit(self.centers).kneighbors(X, return_distance=False)
+
+    def fit_predict(self, X: np.ndarray):
+        return self.fit(X).predict(X)
