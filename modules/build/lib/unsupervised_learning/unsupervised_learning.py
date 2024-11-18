@@ -1,4 +1,5 @@
 import numpy as np
+from numba import njit, prange
 
 
 def mixGauss(means, gammas, n):
@@ -58,3 +59,26 @@ def swiss_roll(n):
     data[:, 1] = phi*np.sin(phi)
     data[:, 2] = psi
     return data
+
+
+@njit(parallel=True)
+def mutual_information_criterion(X: np.ndarray, y: np.ndarray):
+    y = y.flatten()
+    mi = np.zeros(X.shape[1])
+    n_rows = X.shape[0]
+    n_features = max(y)+1
+    # for each feature i
+    for i in prange(X.shape[1]):
+        n_vals = max(X[:, i])+1
+        value_counts = np.zeros((n_vals, n_features))
+        # count the observation wrt label and feature value
+        for n in range(n_rows):
+            value_counts[int(X[n, i]), int(y[n])] += 1
+        temp = 0
+        # compute the probabilities
+        for feature in range(n_features):
+            for val in range(n_vals):
+                temp += value_counts[val, feature] * np.log(value_counts[val, feature] / sum(
+                    value_counts[val, :]) / sum(value_counts[:, feature])*n_rows) / n_rows
+        mi[i] = temp
+    return mi
