@@ -14,12 +14,3 @@ def kmeans_plus_plus(X: np.ndarray, k: int):
         distances.astype(int)
         centers[cluster] = np.argmax(np.random.randint(distances**2+1))
     return centers
-    for idx, node in enumerate(X):
-        closest = np.inf
-        # find closest centroid
-        for j in range(cluster+1):
-            closest = min(
-                abs(np.sum(node - X[centers[j]])), closest)
-        d[idx] = closest
-    centers[cluster] = np.argmax(np.random.randint(d+1))
-    return centers
