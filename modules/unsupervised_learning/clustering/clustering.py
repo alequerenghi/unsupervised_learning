@@ -18,3 +18,17 @@ def kmeans_plus_plus(X: np.ndarray, k: int):
             d[idx] = np.random.randint(val**2+1)
         centers[cluster] = np.argmax(d)
     return centers
+
+
+def compute_loss(clusters: np.ndarray, centers: np.ndarray, n_clusters):
+    mean = clusters.mean()
+    std = clusters.std()
+    clusters = (clusters-mean)/std
+    centers = (centers-mean)/std
+    clusters = clusters ** 2
+    loss = 0
+    for cluster in range(n_clusters):
+        in_cluster = np.where(clusters == cluster)[0]
+        loss += np.sum(
+            np.sqrt(np.abs(np.sum(clusters[in_cluster] - centers[cluster] ** 2, axis=1))))
+    return loss

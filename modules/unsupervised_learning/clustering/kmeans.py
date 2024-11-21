@@ -2,7 +2,7 @@
 
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
-from .clustering import kmeans_plus_plus
+from .clustering import kmeans_plus_plus, compute_loss
 from numba import njit, prange
 from typing import Literal
 
@@ -13,6 +13,8 @@ def kmeans(X: np.ndarray, k, init, max_iter):
     new_centers = np.zeros((k, X.shape[1]))
     if init == 'kmeans++':
         centers = X[kmeans_plus_plus(X, k)]
+    elif type(init) == np.ndarray:
+        centers = init
     else:
         centers = X[np.random.randint(X.shape[0], size=k)]
     # until stops moving
@@ -36,16 +38,6 @@ def recompute_cluster_centers(X: np.ndarray, indices: np.ndarray, k):
         nodes = X[in_cluster_k]
         centers[cluster_k] = np.sum(nodes, axis=0) / nodes.shape[0]
     return centers
-
-
-def compute_loss(clusters: np.ndarray, centers: np.ndarray, n_clusters):
-    clusters = clusters ** 2
-    loss = 0
-    for cluster in range(n_clusters):
-        in_cluster = np.where(clusters == cluster)[0]
-        loss += np.sum(
-            np.sqrt(np.abs(np.sum(clusters[in_cluster] - centers[cluster] ** 2, axis=1))))
-    return loss
 
 
 class KMeans:
