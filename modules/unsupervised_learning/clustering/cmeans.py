@@ -33,7 +33,7 @@ def fuzzy_cmeans(X: np.ndarray, k, fuzz, init, max_iter):
     return centers
 
 
-@njit(parallel=True)
+@njit()
 def recompute_fuzz(X: np.ndarray, centers: np.ndarray, fuzz):
     N = X.shape[0]
     k = centers.shape[0]
@@ -48,14 +48,14 @@ def recompute_fuzz(X: np.ndarray, centers: np.ndarray, fuzz):
     return U / np.sum(U, axis=1).reshape(N, 1)
 
 
-@njit(parallel=True)
+@njit()
 def recompute_cluster_centers(X: np.ndarray, U: np.ndarray, fuzz):
     k = U.shape[1]
     centers = np.zeros((k, X.shape[1]))
     U = U ** fuzz
-    for cluster_k in prange(k):
-        UK = (U[:, cluster_k])
-        centers[cluster_k] = np.sum(X * UK, axis=0) / np.sum(UK, axis=0)
+    for cluster_k in range(k):
+        UK = (U[:, cluster_k])[:, np.newaxis]
+        centers[cluster_k] = np.sum((X * UK), axis=0) / np.sum(UK, axis=0)
     return centers
 
 
