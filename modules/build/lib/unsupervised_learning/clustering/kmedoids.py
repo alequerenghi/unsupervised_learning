@@ -52,19 +52,10 @@ class KMedoids:
         return self
 
     def predict(self, X: np.ndarray):
-        clusters = NearestNeighbors(n_neighbors=1).fit(
-            self.centers).kneighbors(X, return_distance=False)
-        self.loss = self.compute_loss(clusters)
+        distances, clusters = NearestNeighbors(n_neighbors=1).fit(
+            self.centers).kneighbors(X)
+        self.loss = np.sum(distances**2)
         return clusters
 
     def fit_predict(self, X: np.ndarray):
         return self.fit(X).predict(X)
-
-    def compute_loss(self, clusters: np.ndarray):
-        clusters = clusters ** 2
-        loss = 0
-        for cluster in range(self.n_clusters):
-            in_cluster = np.where(clusters == cluster)[0]
-            loss += np.sum(
-                np.sqrt(np.abs(np.sum(clusters[in_cluster] - self.centers[cluster] ** 2, axis=1))))
-        return loss

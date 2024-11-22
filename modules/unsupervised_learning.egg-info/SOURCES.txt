@@ -1,5 +1,6 @@
 setup.py
 unsupervised_learning/__init__.py
+unsupervised_learning/kneighbors.py
 unsupervised_learning/unsupervised_learning.py
 unsupervised_learning.egg-info/PKG-INFO
 unsupervised_learning.egg-info/SOURCES.txt
@@ -8,6 +9,7 @@ unsupervised_learning.egg-info/requires.txt
 unsupervised_learning.egg-info/top_level.txt
 unsupervised_learning/clustering/__init__.py
 unsupervised_learning/clustering/clustering.py
+unsupervised_learning/clustering/cmeans.py
 unsupervised_learning/clustering/kmeans.py
 unsupervised_learning/clustering/kmedoids.py
 unsupervised_learning/density_estimation/__init__.py

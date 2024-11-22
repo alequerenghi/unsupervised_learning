@@ -1,7 +1,7 @@
 from typing import Literal
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
-from unsupervised_learning.clustering import kmeans_plus_plus, compute_loss
+from unsupervised_learning.clustering import kmeans_plus_plus
 from numba import njit, prange, int64
 
 
@@ -52,9 +52,9 @@ class KMedoids:
         return self
 
     def predict(self, X: np.ndarray):
-        clusters = NearestNeighbors(n_neighbors=1).fit(
-            self.centers).kneighbors(X, return_distance=False)
-        self.loss = compute_loss(clusters, self.centers, self.n_clusters)
+        distances, clusters = NearestNeighbors(n_neighbors=1).fit(
+            self.centers).kneighbors(X)
+        self.loss = np.sum(distances**2)
         return clusters
 
     def fit_predict(self, X: np.ndarray):

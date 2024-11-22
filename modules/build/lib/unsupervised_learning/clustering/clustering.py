@@ -12,5 +12,7 @@ def kmeans_plus_plus(X: np.ndarray, k: int):
         distances = NearestNeighbors(n_neighbors=1).fit(
             X[centers[:cluster+1]]).kneighbors(X)[0].flatten()
         distances.astype(int)
-        centers[cluster] = np.argmax(np.random.randint(distances**2+1))
+        for idx, val in enumerate(distances):
+            d[idx] = np.random.randint(val**2+1)
+        centers[cluster] = np.argmax(d)
     return centers

@@ -13,6 +13,8 @@ def kmeans(X: np.ndarray, k, init, max_iter):
     new_centers = np.zeros((k, X.shape[1]))
     if init == 'kmeans++':
         centers = X[kmeans_plus_plus(X, k)]
+    elif type(init) == np.ndarray:
+        centers = init
     else:
         centers = X[np.random.randint(X.shape[0], size=k)]
     # until stops moving
@@ -38,16 +40,6 @@ def recompute_cluster_centers(X: np.ndarray, indices: np.ndarray, k):
     return centers
 
 
-def compute_loss(clusters: np.ndarray, centers: np.ndarray, n_clusters):
-    clusters = clusters ** 2
-    loss = 0
-    for cluster in range(n_clusters):
-        in_cluster = np.where(clusters == cluster)[0]
-        loss += np.sum(
-            np.sqrt(np.abs(np.sum(clusters[in_cluster] - centers[cluster] ** 2, axis=1))))
-    return loss
-
-
 class KMeans:
     def __init__(self, n_clusters=8, init: Literal['random', 'kmeans++'] = 'kmeans++', max_iter=300):
         self.n_clusters = n_clusters
@@ -59,9 +51,9 @@ class KMeans:
         return self
 
     def predict(self, X: np.ndarray):
-        clusters = NearestNeighbors(n_neighbors=1).fit(
-            self.centers).kneighbors(X, return_distance=False)
-        self.loss = compute_loss(clusters, self.centers, self.n_clusters)
+        distances, clusters = NearestNeighbors(
+            n_neighbors=1).fit(self.centers).kneighbors(X)
+        self.loss = np.sum(distances**2)
         return clusters
 
     def fit_predict(self, X: np.ndarray):
