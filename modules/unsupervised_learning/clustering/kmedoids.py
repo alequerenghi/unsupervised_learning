@@ -1,8 +1,8 @@
 from typing import Literal
 import numpy as np
-from sklearn.neighbors import NearestNeighbors
+from unsupervised_learning.neighbors import NearestNeighbors
 from unsupervised_learning.clustering import kmeans_plus_plus
-from numba import njit, prange, int64
+from numba import njit, prange
 
 
 def kmedoids(X: np.ndarray, k, init, max_iter):
@@ -12,7 +12,7 @@ def kmedoids(X: np.ndarray, k, init, max_iter):
     if init == 'kmeans++':
         centers = kmeans_plus_plus(X, k)
     else:
-        centers = np.random.randint(X.shape[0], size=k)
+        centers = np.random.randint(N, size=k)
 
     # until stops moving
     for _ in range(max_iter):
@@ -21,7 +21,7 @@ def kmedoids(X: np.ndarray, k, init, max_iter):
         else:
             new_centers = np.array(centers, copy=True)
             neigh.fit(X[centers])
-            indices = neigh.kneighbors(X, return_distance=False)
+            indices = neigh.kneighbors(X, return_distances=False)
             centers = recompute_medoid_centers(X, indices, k)
     return centers
 
@@ -29,13 +29,14 @@ def kmedoids(X: np.ndarray, k, init, max_iter):
 @njit(parallel=True)
 def recompute_medoid_centers(X: np.ndarray, indices: np.ndarray, k):
     indices = indices.flatten()
-    clusters = np.zeros(k, dtype=int64)
+    clusters = np.zeros(k, dtype=np.int64)
     for cluster in prange(k):
         in_cluster = np.where(indices == cluster)[0]
-        nodes = X[in_cluster] ** 2
-        dist = np.zeros(len(in_cluster))
+        nodes = X[in_cluster]
+        dist = np.zeros(in_cluster.shape[0])
         for i in range(dist.shape[0]):
-            dist[i] = np.sum(np.sqrt(np.abs(np.sum(nodes - nodes[i], axis=1))))
+            dist[i] = np.sum(
+                np.sqrt(np.abs(np.sum((nodes - nodes[i])**2, axis=1))))
         clusters[cluster] = in_cluster[np.argmin(dist)]
     return clusters
 
@@ -52,7 +53,7 @@ class KMedoids:
         return self
 
     def predict(self, X: np.ndarray):
-        distances, clusters = NearestNeighbors(n_neighbors=1).fit(
+        distances, clusters = NearestNeighbors(1).fit(
             self.centers).kneighbors(X)
         self.loss = np.sum(distances**2)
         return clusters

@@ -1,18 +1,16 @@
 import numpy as np
-from sklearn.neighbors import NearestNeighbors
+from unsupervised_learning.neighbors import NearestNeighbors
 
 
 def kmeans_plus_plus(X: np.ndarray, k: int):
-    centers = np.zeros(k, dtype=int)
-    d = np.zeros(X.shape[0], dtype=int)
-
+    centers = np.zeros(k, dtype=np.int64)
+    neigh = NearestNeighbors(1)
     centers[0] = np.random.randint(low=X.shape[0])
     # until all clusters are added
     for cluster in range(k):
-        distances = NearestNeighbors(n_neighbors=1).fit(
-            X[centers[:cluster+1]]).kneighbors(X)[0].flatten()
-        distances.astype(int)
-        for idx, val in enumerate(distances):
-            d[idx] = np.random.randint(val**2+1)
-        centers[cluster] = np.argmax(d)
+        neigh.fit(X[centers[:cluster+1]])
+        distances = neigh.kneighbors(X)[0].flatten()
+        distances = distances ** 2 * X.shape[0]+1
+        distances.astype(np.int64)
+        centers[cluster] = np.argmax(np.random.randint(distances))
     return centers

@@ -1,7 +1,6 @@
 
-
 import numpy as np
-from sklearn.neighbors import NearestNeighbors
+from unsupervised_learning.neighbors import find_kneighbors, NearestNeighbors
 from .clustering import kmeans_plus_plus
 from numba import njit, prange
 from typing import Literal
@@ -23,13 +22,13 @@ def kmeans(X: np.ndarray, k, init, max_iter):
             break
         else:
             new_centers = np.copy(centers)
-            neigh.fit(centers)
-            indices = neigh.kneighbors(X, return_distance=False)
+            # find_kneighbors(centers, X, 1)
+            indices = neigh.fit(centers).kneighbors(X, False)
             centers = recompute_cluster_centers(X, indices, k)
     return centers
 
 
-@njit(parallel=True)
+@ njit(parallel=True)
 def recompute_cluster_centers(X: np.ndarray, indices: np.ndarray, k):
     indices = indices.flatten()
     centers = np.zeros((k, X.shape[1]))

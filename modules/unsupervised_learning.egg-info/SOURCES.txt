@@ -1,6 +1,5 @@
 setup.py
 unsupervised_learning/__init__.py
-unsupervised_learning/kneighbors.py
 unsupervised_learning/unsupervised_learning.py
 unsupervised_learning.egg-info/PKG-INFO
 unsupervised_learning.egg-info/SOURCES.txt
@@ -20,3 +19,5 @@ unsupervised_learning/dimensionality_reduction/intrinsicdimensionality.py
 unsupervised_learning/dimensionality_reduction/isomap.py
 unsupervised_learning/dimensionality_reduction/kernelpca.py
 unsupervised_learning/dimensionality_reduction/pca.py
+unsupervised_learning/neighbors/__init__.py
+unsupervised_learning/neighbors/kneighbors.py
