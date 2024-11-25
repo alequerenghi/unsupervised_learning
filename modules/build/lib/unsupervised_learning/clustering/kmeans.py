@@ -1,6 +1,6 @@
 
 import numpy as np
-from unsupervised_learning.neighbors import find_kneighbors, NearestNeighbors
+from unsupervised_learning.neighbors import NearestNeighbors
 from .clustering import kmeans_plus_plus
 from numba import njit, prange
 from typing import Literal
@@ -10,10 +10,10 @@ def kmeans(X: np.ndarray, k, init, max_iter):
     N = X.shape[0]
     neigh = NearestNeighbors(n_neighbors=1)
     new_centers = np.zeros((k, X.shape[1]))
-    if init == 'kmeans++':
-        centers = X[kmeans_plus_plus(X, k)]
-    elif type(init) == np.ndarray:
+    if type(init) == np.ndarray:
         centers = init
+    elif init == 'kmeans++':
+        centers = X[kmeans_plus_plus(X, k)]
     else:
         centers = X[np.random.randint(X.shape[0], size=k)]
     # until stops moving

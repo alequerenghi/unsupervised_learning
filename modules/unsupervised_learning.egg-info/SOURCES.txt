@@ -11,6 +11,7 @@ unsupervised_learning/clustering/clustering.py
 unsupervised_learning/clustering/cmeans.py
 unsupervised_learning/clustering/kmeans.py
 unsupervised_learning/clustering/kmedoids.py
+unsupervised_learning/clustering/spectral.py
 unsupervised_learning/density_estimation/__init__.py
 unsupervised_learning/density_estimation/density_estimation.py
 unsupervised_learning/density_estimation/kernel_density.py
