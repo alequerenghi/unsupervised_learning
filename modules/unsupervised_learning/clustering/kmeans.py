@@ -1,6 +1,6 @@
 
 import numpy as np
-from unsupervised_learning.neighbors import find_kneighbors, NearestNeighbors
+from unsupervised_learning.neighbors import NearestNeighbors
 from .clustering import kmeans_plus_plus
 from numba import njit, prange
 from typing import Literal
