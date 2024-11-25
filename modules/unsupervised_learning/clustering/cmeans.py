@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 
 
 import numpy as np
-from unsupervised_learning.neighbors import NearestNeighbors
-from .clustering import kmeans_plus_plus
+from unsupervised_learning.clustering import NearestNeighbors
+from unsupervised_learning.clustering import kmeans_plus_plus
 from numba import njit, prange
 from typing import Literal
 
@@ -28,7 +28,7 @@ def fuzzy_cmeans(X: np.ndarray, k, fuzz, init, max_iter):
         else:
             new_centers = np.copy(centers)
             centers = recompute_cluster_centers(X, U, fuzz)
-            U = recompute_fuzz_slow(X, centers, fuzz)
+            U = recompute_fuzz(X, centers, fuzz)
     return centers
 
 
@@ -77,22 +77,3 @@ class FuzzyCMeans:
 
     def fit_predict(self, X: np.ndarray):
         return self.fit(X).predict(X)
-
-
-@ njit()
-def recompute_fuzz_slow(X: np.ndarray, centers: np.ndarray, fuzz):
-    N = X.shape[0]
-    k = centers.shape[0]
-    center_distances = np.zeros((N, k))
-    for cluster_k in range(k):
-        # for row in range(N):
-        center_distances[:, cluster_k] = np.sum(
-            (X - centers[cluster_k])**2, axis=1)
-    center_distances = center_distances ** (1/(fuzz-1))
-    U = np.zeros((N, k))
-    for cluster_k in range(k):
-        # for row in range(N):
-        U[:, cluster_k] = (1 /
-                           np.sum(center_distances[:, cluster_k][:, np.newaxis] /
-                                  center_distances[:], axis=1))
-    return U
