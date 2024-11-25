@@ -1,6 +1,3 @@
-import matplotlib.pyplot as plt
-
-
 import numpy as np
 from unsupervised_learning.neighbors import NearestNeighbors
 from .clustering import kmeans_plus_plus
@@ -28,25 +25,30 @@ def fuzzy_cmeans(X: np.ndarray, k, fuzz, init, max_iter):
         else:
             new_centers = np.copy(centers)
             centers = recompute_cluster_centers(X, U, fuzz)
-            U = recompute_fuzz_slow(X, centers, fuzz)
+            U = recompute_fuzz(X, centers, fuzz)
     return centers
 
 
-@njit(parallel=True)
+@njit()
 def recompute_fuzz(X: np.ndarray, centers: np.ndarray, fuzz):
     N = X.shape[0]
     k = centers.shape[0]
+    center_distances = np.zeros((N, k))
+    for cluster_k in range(k):
+        # for row in range(N):
+        center_distances[:, cluster_k] = np.sum(
+            (X - centers[cluster_k])**2, axis=1)
+    center_distances = center_distances ** (1/(fuzz-1))
     U = np.zeros((N, k))
-    for row in prange(N):
-        center_distances = np.sum(
-            (X[row] - centers)**2, axis=1) ** (1/(fuzz-1))
-        for cluster_k in range(k):
-            U[row, cluster_k] = (1 / (np.sum(center_distances[cluster_k]
-                                             / center_distances)))
+    for cluster_k in range(k):
+        # for row in range(N):
+        U[:, cluster_k] = (1 /
+                           np.sum(center_distances[:, cluster_k][:, np.newaxis] /
+                                  center_distances[:], axis=1))
     return U
 
 
-@ njit()
+@njit()
 def recompute_cluster_centers(X: np.ndarray, U: np.ndarray, fuzz):
     k = U.shape[1]
     centers = np.zeros((k, X.shape[1]))
@@ -77,22 +79,3 @@ class FuzzyCMeans:
 
     def fit_predict(self, X: np.ndarray):
         return self.fit(X).predict(X)
-
-
-@ njit()
-def recompute_fuzz_slow(X: np.ndarray, centers: np.ndarray, fuzz):
-    N = X.shape[0]
-    k = centers.shape[0]
-    center_distances = np.zeros((N, k))
-    for cluster_k in range(k):
-        # for row in range(N):
-        center_distances[:, cluster_k] = np.sum(
-            (X - centers[cluster_k])**2, axis=1)
-    center_distances = center_distances ** (1/(fuzz-1))
-    U = np.zeros((N, k))
-    for cluster_k in range(k):
-        # for row in range(N):
-        U[:, cluster_k] = (1 /
-                           np.sum(center_distances[:, cluster_k][:, np.newaxis] /
-                                  center_distances[:], axis=1))
-    return U
