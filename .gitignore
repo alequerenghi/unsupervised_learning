@@ -2,4 +2,5 @@
 appunti
 __pycache__
 .vscode
-/progetto/
+progetto/
+modules/build/

@@ -1,32 +1,27 @@
+from sklearn.datasets import load_iris
 from typing import Literal
 import numpy as np
 from unsupervised_learning.neighbors import NearestNeighbors
 from unsupervised_learning.clustering import KMeans
-from numba import njit, prange
 
 
-@njit(parallel=True)
 def compute_laplacian(distances: np.ndarray, indices: np.ndarray):
     N = distances.shape[0]
-    L = np.zeros((N, N))
-    D = np.zeros(N)
-    for row in prange(N):
+    S = np.zeros((N, N))
+    D = np.sum(distances, axis=1)
+    for row in range(N):
         for idx, col in enumerate(indices[row]):
-            L[row, col] = distances[row, idx]
-            L[col, row] = distances[row, idx]
-        L[row, row] = 0
-        D[row] = np.sum(L[row])
-        L[row, row] = -D[row]
-    return -L, D
+            S[row, col] = 1
+            S[col, row] = 1
+        S[row, row] = -D[row]
+    return -S, D
 
 
-@njit
 def ratio_cut(L: np.ndarray, n_clusters):
     _, U = np.linalg.eigh(L)
     return U[:, :n_clusters]
 
 
-@njit
 def min_cut(L: np.ndarray, D: np.ndarray, n_clusters):
     L = (D ** (-1/2)).reshape(-1, 1) * (L) * (D ** (-1/2))
     _, U = np.linalg.eigh(L)

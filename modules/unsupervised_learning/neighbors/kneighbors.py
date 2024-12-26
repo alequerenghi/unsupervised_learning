@@ -1,12 +1,10 @@
 import numpy as np
-from numba import njit, prange
 
 
-@njit(parallel=True)
 def find_kneighbors(X: np.ndarray, Y: np.ndarray):
     distances = np.zeros((Y.shape[0], X.shape[0]))
     indices = np.zeros(distances.shape, dtype=np.int64)
-    for row in prange(Y.shape[0]):
+    for row in range(Y.shape[0]):
         distances[row] = np.sum((Y[row] - X)**2, axis=1) ** (1/2)
         indices[row] = np.argsort(distances[row])
         distances[row] = distances[row, indices[row]]
