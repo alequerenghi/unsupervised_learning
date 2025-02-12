@@ -2,7 +2,6 @@ import numpy as np
 from sklearn.neighbors import NearestNeighbors
 from scipy.sparse import coo_matrix
 from scipy.sparse.linalg import eigsh
-from numba import njit, prange
 
 
 def _locally_linear_embedding(X, n_neighbors, n_components, reg):
@@ -14,11 +13,10 @@ def _locally_linear_embedding(X, n_neighbors, n_components, reg):
     return embedding, reconstruction_error
 
 
-@njit(parallel=True)
 def compute_weights(X: np.ndarray, ind: np.ndarray, reg=0.001) -> np.ndarray:
     N = X.shape[0]
     W = np.zeros(shape=(N, N), dtype=np.float64)
-    for x in prange(N):
+    for x in range(N):
         x_neighbors = ind[x]
         C = X[x_neighbors] @ X[x_neighbors].T
         C += np.eye(C.shape[0]) * reg
@@ -31,11 +29,10 @@ def compute_weights(X: np.ndarray, ind: np.ndarray, reg=0.001) -> np.ndarray:
     return W
 
 
-@njit(parallel=True)
 def compute_reconstruction_error(D: np.ndarray, W: np.ndarray, indices: np.ndarray):
     N = D.shape[0]
     err = 0
-    for i in prange(N):
+    for i in range(N):
         x_neighbors = D[indices[i]]
         x_recon = np.dot(W[i, indices[i]], x_neighbors)
         err += np.linalg.norm(D[i] - x_recon)**2
